@@ -27,3 +27,8 @@ Usage
 
 A complete workflow example (prediction, attribution, motif scan,
 seqlets and metrics) is available in ``seqtrust/example/tutorial.ipynb``.
+
+
+Read the tutorial here:
+
+https://docs.readthedocs.io/en/stable/tutorial/
