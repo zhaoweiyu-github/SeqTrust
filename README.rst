@@ -1,9 +1,7 @@
 SeqTrust
 ========
 
-A Python toolkit for trustworthy evaluation of designed DNA sequences:
-seq2func prediction / embedding / attribution, motif scanning, seqlet
-extraction, and seqlet-based biological plausibility metrics.
+Regulatory plausibility analysis based on predictive sequence features enables reliable prioritization of AI-designed regulatory sequences.
 
 Installation
 ------------
