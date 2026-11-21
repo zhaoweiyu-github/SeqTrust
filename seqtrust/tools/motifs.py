@@ -3,9 +3,26 @@ import pandas as pd
 
 from typing import List, Tuple, Optional
 from collections import defaultdict
-from tqdm import tqdm
 
-from seqtrust import config
+from pathlib import Path
+
+PACKAGE_ROOT = Path(__file__).resolve().parents[1]
+
+DEFAULT_MEME_PATH = (
+    PACKAGE_ROOT
+    / "data"
+    / "motif"
+    / "HOCOMOCO"
+    / "H14CORE_meme_format.meme"
+)
+
+DEFAULT_CLUSTER_PATH = (
+    PACKAGE_ROOT
+    / "data"
+    / "motif"
+    / "HOCOMOCO"
+    / "motif_clusters.tsv"
+)
 
 
 def read_meme(
@@ -129,6 +146,7 @@ def get_background(
 
     return bg_array, background
 
+
 def background_from_freq(bg_freq):
     """
     Build a pymeme Background model from user-specified nucleotide frequencies.
@@ -199,6 +217,7 @@ def scan_with_fimo(
     Scan sequences for motif hits using FIMO.
     """
 
+    from tqdm import tqdm
     from pymemesuite.common import Sequence
     from pymemesuite.fimo import FIMO
 
@@ -341,7 +360,7 @@ def get_scan_df(
     bg_freq=None,
     show_progress: bool = False,
     output_type: str = "binary",
-    return_scan: bool = True,
+    return_scan: bool = True, 
 ):
     """
     Generate sequence-by-motif feature matrix.
@@ -392,6 +411,8 @@ def get_scan_df(
     )
 
     if len(motif_scans) == 0:
+        if return_scan:
+            return feature_df, motif_scans
         return feature_df
 
     output_type = output_type.lower()
@@ -439,7 +460,7 @@ def get_scan_df(
 
 
 
-def calculate_motif_features(
+def add_motif_features(
     df: pd.DataFrame,
     meme_path: str | None = None,
     motif_clusters: str | None = None,
@@ -453,23 +474,24 @@ def calculate_motif_features(
     show_progress: bool = False,
     output_type: str = "binary",
     feature_col: str = "motif_features",
-    return_scan: bool = True,
+    return_scan: bool = True, 
 ):
-    """Calculate per-sequence motif features for the given dataframe.
+    """Add motif features to the original dataframe.
 
-    ``bg_freq`` optionally provides user-specified background
-    nucleotide frequencies (dict keyed by A/C/G/T, or 4 values in
-    A, C, G, T order).
-
-    Returns the dataframe with a new feature column, the motif names,
-    and the positional FIMO scan table.
+    Parameters
+    ----------
+    bg_freq : dict or array-like, optional
+        User-specified background nucleotide frequencies (dict keyed by
+        A/C/G/T, or 4 values in A, C, G, T order). If None, the background
+        is computed from the input sequences (or uniform when
+        use_uniform_bg=True).
     """
 
     if meme_path is None:
-        meme_path = config.DEFAULT_MEME_PATH
+        meme_path = DEFAULT_MEME_PATH
 
     if motif_clusters is None:
-        motif_clusters = config.DEFAULT_CLUSTER_PATH
+        motif_clusters = DEFAULT_CLUSTER_PATH
 
     df_out = df.copy()
 
@@ -486,8 +508,8 @@ def calculate_motif_features(
         threshold=threshold,
         qval_cutoff=qval_cutoff,
         pval_cutoff=pval_cutoff,
-        use_uniform_bg=use_uniform_bg,
         bg_freq=bg_freq,
+        use_uniform_bg=use_uniform_bg,
         show_progress=show_progress,
         output_type=output_type,
     )
@@ -509,3 +531,102 @@ def calculate_motif_features(
         df_out,
         list(motif_names)
     )
+
+
+def calculate_motif_diversity(
+    df,
+    feature_col,
+    input_type="count",
+):
+    """
+    Calculate per-sequence motif diversity.
+
+    Parameters
+    ----------
+    feature_col:
+        Column storing motif feature vectors.
+
+    input_type:
+        "count" or "binary"
+
+    Returns
+    -------
+    pd.DataFrame
+        motif_entropy
+        normalized_entropy
+        motif_number
+    """
+
+
+    results = []
+
+
+    for vec in df[feature_col]:
+
+        x = np.asarray(
+            vec,
+            dtype=float,
+        )
+
+
+        # remove absent motifs
+        x = x[x > 0]
+
+
+        if len(x) == 0:
+
+            results.append(
+                {
+                    "motif_entropy":0.0,
+                    "normalized_entropy":0.0,
+                    "motif_number":0,
+                }
+            )
+
+            continue
+
+
+        # probability
+        p = x / x.sum()
+
+
+        entropy = (
+            -np.sum(
+                p*np.log(
+                    p
+                )
+            )
+        )
+
+
+        # normalize to [0,1]
+        if len(p)>1:
+
+            normalized_entropy = (
+                entropy /
+                np.log(len(p))
+            )
+
+        else:
+
+            normalized_entropy = 0.0
+
+
+        results.append(
+            {
+                "motif_entropy":
+                    entropy,
+
+                "normalized_entropy":
+                    normalized_entropy,
+
+                "motif_number":
+                    len(x),
+            }
+        )
+
+
+    return pd.DataFrame(results,index=df.index)
+
+
+

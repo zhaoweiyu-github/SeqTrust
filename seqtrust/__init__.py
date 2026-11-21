@@ -1,7 +1,6 @@
-"""SeqTrust - DNA sequence evaluation toolkit."""
+"""Public interface for the SeqTrust package."""
 
-from . import config
 from .core import SeqTrust
+from .io import read_sequence_file
 
-__all__ = ["SeqTrust", "config"]
-__version__ = "0.1.0"
+__all__ = ["SeqTrust", "read_sequence_file"]
