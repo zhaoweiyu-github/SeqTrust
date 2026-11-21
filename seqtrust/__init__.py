@@ -1,3 +1,5 @@
+## SeqTrsut moddule
+
 """Public interface for the SeqTrust package."""
 
 from .core import SeqTrust
